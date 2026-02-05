@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/pcpsfoundation/spec/master/spec/schema.json",
+  "title": "Parental Controls Policy Specification (PCPS)",
+  "description": "A vendor-neutral, portable data format for expressing parental control policies for a family across devices and platforms.",
+  "type": "object",
+  "required": ["pcps_version", "family_id", "timezone", "guardians", "children"],
+  "additionalProperties": false,
+  "properties": {
+    "pcps_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "PCPS specification version"
+    },
+    "family_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this family"
+    },
+    "family_name": {
+      "type": "string",
+      "description": "Display name for the family"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the document was first created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the document was last modified"
+    },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone identifier (e.g. Europe/London). Default for all children."
+    },
+    "guardians": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Adults who manage this family's policies",
+      "items": { "$ref": "#/$defs/guardian" }
+    },
+    "children": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Children with their individual policies",
+      "items": { "$ref": "#/$defs/child" }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Family-level vendor-specific extensions, namespaced by vendor key",
+      "additionalProperties": { "type": "object" }
+    }
+  },
+  "$defs": {
+    "guardian": {
+      "type": "object",
+      "required": ["guardian_id", "name", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "guardian_id": { "type": "string", "description": "Unique identifier for this guardian" },
+        "name": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "format": "email", "description": "Contact email" },
+        "role": { "type": "string", "enum": ["primary", "guardian"] }
+      }
+    },
+    "device": {
+      "type": "object",
+      "required": ["device_id", "device_name", "platform"],
+      "additionalProperties": false,
+      "properties": {
+        "device_id": { "type": "string" },
+        "device_name": { "type": "string" },
+        "platform": { "type": "string", "description": "Platform identifier (e.g. apple, google, microsoft, nintendo, sony, amazon)" },
+        "model": { "type": "string" }
+      }
+    },
+    "child": {
+      "type": "object",
+      "required": ["child_id", "child_name", "policy"],
+      "additionalProperties": false,
+      "properties": {
+        "child_id": { "type": "string", "minLength": 1 },
+        "child_name": { "type": "string" },
+        "child_age": { "type": "integer", "minimum": 0, "maximum": 17 },
+        "timezone": { "type": "string" },
+        "devices": { "type": "array", "items": { "$ref": "#/$defs/device" } },
+        "policy": { "$ref": "#/$defs/policy" }
+      }
+    },
+    "time_of_day": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+      "description": "Time in HH:MM format (24-hour)"
+    },
+    "day_of_week": {
+      "type": "string",
+      "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    },
+    "time_window": {
+      "type": "object",
+      "required": ["allowed_from", "allowed_until"],
+      "additionalProperties": false,
+      "properties": {
+        "allowed_from": { "$ref": "#/$defs/time_of_day" },
+        "allowed_until": { "$ref": "#/$defs/time_of_day" }
+      }
+    },
+    "app_category": {
+      "type": "string",
+      "enum": ["games", "social_media", "educational", "video", "music", "creativity", "browsing", "communication", "other"]
+    },
+    "app_entry": {
+      "type": "object",
+      "required": ["app_name"],
+      "additionalProperties": false,
+      "properties": {
+        "app_name": { "type": "string", "description": "Human-readable app name (canonical identifier)" },
+        "reason": { "type": "string", "description": "Reason for blocking (optional)" }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "required": ["name", "identifiers"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "identifiers": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "description": "The parental control policy for one child",
+      "additionalProperties": false,
+      "properties": {
+        "schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "weekday": { "$ref": "#/$defs/time_window" },
+            "weekend": { "$ref": "#/$defs/time_window" },
+            "custom": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["days", "allowed_from", "allowed_until"],
+                "additionalProperties": false,
+                "properties": {
+                  "days": { "type": "array", "items": { "$ref": "#/$defs/day_of_week" }, "minItems": 1, "uniqueItems": true },
+                  "allowed_from": { "$ref": "#/$defs/time_of_day" },
+                  "allowed_until": { "$ref": "#/$defs/time_of_day" }
+                }
+              }
+            }
+          }
+        },
+        "time_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "daily": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "weekday": { "type": "integer", "minimum": 0 },
+                "weekend": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "by_category": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["category"],
+                "additionalProperties": false,
+                "properties": {
+                  "category": { "$ref": "#/$defs/app_category" },
+                  "daily_minutes": { "type": ["integer", "null"], "minimum": 0 }
+                }
+              }
+            },
+            "by_app": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["app_name"],
+                "additionalProperties": false,
+                "properties": {
+                  "app_name": { "type": "string" },
+                  "daily_minutes": { "type": ["integer", "null"], "minimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_age_rating": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 18,
+              "description": "Maximum content age allowed. Platform adapters map this to native rating systems (PEGI, ESRB, etc.)"
+            },
+            "web": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "mode": { "type": "string", "enum": ["allowlist", "blocklist", "filtered"] },
+                "allowlist": { "type": "array", "items": { "type": "string" } },
+                "blocklist": { "type": "array", "items": { "type": "string" } },
+                "safe_search": { "type": "boolean" }
+              }
+            },
+            "explicit_content": { "type": "boolean" }
+          }
+        },
+        "apps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "require_approval": { "type": "boolean" },
+            "blocked": { "type": "array", "items": { "$ref": "#/$defs/app_entry" } },
+            "always_allowed": { "type": "array", "items": { "$ref": "#/$defs/app_entry" } }
+          }
+        },
+        "communication": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": "string", "enum": ["unrestricted", "contacts_only", "disabled"] },
+            "allowed_contacts": { "type": "array", "items": { "$ref": "#/$defs/contact" } },
+            "block_unknown_callers": { "type": "boolean" }
+          }
+        },
+        "spending": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "require_approval": { "type": "boolean" },
+            "allow_free_downloads": { "type": "boolean" },
+            "monthly_budget": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "properties": {
+                "amount": { "type": "number", "minimum": 0 },
+                "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+              },
+              "required": ["amount", "currency"]
+            },
+            "in_app_purchases": { "type": "boolean" }
+          }
+        },
+        "status": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policy_active": { "type": "boolean" },
+            "paused": { "type": "boolean" },
+            "paused_until": { "type": ["string", "null"], "format": "date-time" },
+            "locked": { "type": "boolean" },
+            "locked_reason": { "type": ["string", "null"] }
+          }
+        },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bonus_time": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "properties": {
+                "minutes": { "type": "integer", "minimum": 1 },
+                "reason": { "type": "string" },
+                "granted_at": { "type": "string", "format": "date-time" },
+                "expires_at": { "type": "string", "format": "date-time" }
+              },
+              "required": ["minutes", "granted_at", "expires_at"]
+            },
+            "temporary_rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["type", "date"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["extend_schedule", "extra_time", "unblock_app", "unblock_site"] },
+                  "date": { "type": "string", "format": "date" },
+                  "reason": { "type": "string" }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        }
+      }
+    }
+  }
+}
